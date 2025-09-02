@@ -14,18 +14,40 @@ app.get('/move', (req, res) => {
     if (!Array.isArray(board) || board.length !== 9) {
         return res.status(400).json({ error: 'El tablero debe ser un array de 9 posiciones.' });
     }
-    // Buscar posiciones vacías (asumiendo que 0 es vacío)
-    const emptyPositions = board
-        .map((v, i) => v === 0 ? i : null)
-        .filter(i => i !== null);
-    
-    if (emptyPositions.length === 0) {
-        return res.status(400).json({ error: 'No hay movimientos disponibles.' });
+
+    const lines = [
+        [0,1,2], [3,4,5], [6,7,8], // horizontales
+        [0,3,6], [1,4,7], [2,5,8], // verticales
+        [0,4,8], [2,4,6]           // diagonales
+    ];
+
+    // Función que intenta hacer 3 en raya o bloquear
+    function findCritical(player) {
+        for (let line of lines) {
+            const [a,b,c] = line;
+            const values = [board[a], board[b], board[c]];
+            if (values.filter(v => v === player).length === 2 && values.includes(0)) {
+                return line[values.indexOf(0)];
+            }
+        }
+        return null;
     }
-    
-    // Elegir una posición vacía al azar
-    const move = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
-    res.json({ movimiento: move });
+
+    // 1. Intentar ganar
+    let move = findCritical(2);
+    // 2. Bloquear al oponente
+    if (move === null) move = findCritical(1);
+    // 3. Si no hay jugada crítica, elegir al azar
+    if (move === null) {
+        const emptyPositions = board.map((v,i) => v===0 ? i : null).filter(i=>i!==null);
+        if (emptyPositions.length === 0) {
+            return res.status(400).json({ error: 'No hay movimientos disponibles.' });
+        }
+        move = emptyPositions[Math.floor(Math.random() * emptyPositions.length)];
+    }
+
+    board[move] = 2; // IA juega con 2
+    res.json({ movimiento: move, tablero: board });
 });
 
 app.listen(PORT, () => {
